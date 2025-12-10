@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Memories in Place and Time</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</head>
+<body>
+  <script src = "data/memories.geojson"></script>
+  <div id="title">
+    <h1>Project 2: Memories in Place and Time</h1>
+    <!-- <p>Context</p> -->
+    <p>I would like to acknowledge that these memories have taken place on the traditional land of the first people of Seattle, the Duwamish People past and present. I honor, with gratitude, the land itself and the Duwamish Tribe.</p>
+    <!-- ^ edited on 10/2 to flow a bit better -->
+  </div>
+  <!-- <div id="description"></div> -->
+  <!-- Filter Panel -->
+  <div id="controls">
+    <!-- Memories can have multiple associations and years linked to them. -->
+    <h4>Filter by Association</h4>
+    <label><input type="checkbox" name="association" value="Belonging" checked> Belonging</label>
+    <label><input type="checkbox" name="association" value="Comfort" checked> Comfort</label>
+    <label><input type="checkbox" name="association" value="Confidence" checked> Confidence</label>
+    <label><input type="checkbox" name="association" value="Discomfort" checked> Discomfort</label>
+    <label><input type="checkbox" name="association" value="Joy" checked> Joy</label>
+    <label><input type="checkbox" name="association" value="Uncertainty" checked> Uncertainty</label>
+
+    <h4>Filter by Academic Year</h4>
+    <!-- These are all of the academic years that I have spent on campus (my first year was online). -->
+    <label><input type="checkbox" name="time" value="2021-2022" checked> 2021-2022</label>
+    <label><input type="checkbox" name="time" value="2022-2023" checked> 2022-2023</label>
+    <label><input type="checkbox" name="time" value="2023-2024" checked> 2023-2024</label>
+    <label><input type="checkbox" name="time" value="2024-2025" checked> 2024-2025</label>
+  </div>
+  <!-- Sidebar info box -->
+  <div id="info-box">
+    <p>Click on a point to explore further.</p>
+  </div>
+  <!-- Map -->
+  <div id="map"></div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+    // Initialize map
+    var map = L.map('map').setView([47.657053, -122.306904], 17);
+    // 47.657053243396206, -122.30690481035941
+
+    // Add a tile layer to the map (Mapbox Streets layer)
+    // L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+    //     attribution: 'Map &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+    //     maxZoom: 21,
+    //     minZoom: 14,
+    //     tileSize: 512,
+    //     zoomOffset: -1
+    // }).addTo(map);
+
+    // L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
+    //   minZoom: 14,
+    //   maxZoom: 21,
+    //   attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    //   ext: 'png',
+    //   tileSize: 512,
+    //   zoomOffset: -1
+    // }).addTo(map);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+	    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+	    subdomains: 'abcd',
+      minZoom: 14,
+      maxZoom: 21,
+      tileSize: 512,
+      zoomOffset: -1
+    }).addTo(map);
+
+    const allData = data;
+
+    // Define default and highlight styles
+    // function defaultStyle(feature) {
+    //   const dstyle = {
+    //     radius: 6,
+    //     color: feature.properties.color,
+    //     fillOpacity: 0.8
+    //   }
+    //   return dstyle;
+    // };
+
+    // const defaultStyle = {
+    //   radius: 6,
+    //   // color: '#2E86AB',
+    //   // color: allData.features.color,
+    //   // color: selectedLayer.defaultOptions.color,
+    //   color: selectedLayer.feature.properties.color,
+    //   fillOpacity: 0.8,
+    // };
+
+    const highlightStyle = {
+      radius: 10,
+      // fillColor: '#ff6600',
+      color: '#FAFA33',
+      // weight: 2,
+      // opacity: 1,
+      fillOpacity: 0.8
+    };
+
+    // Create an empty GeoJSON layer to hold filtered points
+    const filteredLayer = L.geoJSON([], {
+      pointToLayer(feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 8,
+          color: feature.properties.color,
+          fillOpacity: 0.8
+        });
+      },
+      onEachFeature(feature, layer) {
+        // layer.bindPopup(
+        //   `Space: ${feature.properties.space}<br>` // +
+        //   // `: ${feature.properties.time}`
+        // );
+        const defaultStyleH = {
+          radius: 8,
+          color: feature.properties.color,
+          fillOpacity: 0.8,
+        };
+        // layer.on('mouseover', function(e) {
+        //   e.target.setStyle(highlightStyle);
+        // })
+        // .on('mouseout', function(e) {
+        //   e.target.setStyle(defaultStyleH);
+        // })
+        layer.on('click', (e) => {
+          // Prevent the map click handler from immediately firing
+          L.DomEvent.stopPropagation(e);
+
+          // Un-highlight previously selected
+          if (selectedLayer && selectedLayer !== layer) {
+            const defaultStyle = {
+              radius: 8,
+              color: selectedLayer.feature.properties.color,
+              fillOpacity: 0.8,
+            };
+            selectedLayer.setStyle(defaultStyle);
+          }
+
+          // Highlight this layer
+          layer.setStyle(highlightStyle);
+          selectedLayer = layer;
+
+          // Update the sidebar
+          const { space, memory, time, association, color, quirk } = feature.properties;
+          showFeatureInfo(space, memory, time, association, color, quirk);
+        });
+      },
+    }).addTo(map);
+
+    // Helper: get all checked values for a given input name
+    function getCheckedValues(inputName) {
+      return Array.from(
+        document.querySelectorAll(`input[name="${inputName}"]:checked`)
+      ).map(el => el.value);
+    }
+
+    // Core filter + render function
+    function updateFilter() {
+      // Collect user selections
+      const associations = new Set(getCheckedValues('association'));
+      const times = new Set(getCheckedValues('time'));
+
+      // Clear old points
+      filteredLayer.clearLayers();
+
+      // Filter features by both criteria
+      const matched = allData.features.filter(feat => {
+        const p = feat.properties;
+        return p.association.some(value => associations.has(value)) && p.time.some(value => times.has(value));
+        //return p.association.includes(associations) && p.time.includes(times);
+        // return associations.has(p.association) && times.has(p.time);
+      });
+
+      // Add matched points back to the map
+      filteredLayer.addData(matched);
+    }
+
+    // Wire up checkbox change events
+    document
+      .querySelectorAll('#controls input[type="checkbox"]')
+      .forEach(box => box.addEventListener('change', updateFilter));
+
+    // Initial render
+    updateFilter();
+    // Use filteredLayer variable for future layer analysis and manipulation
+
+    // Prepare the info-box update functions
+    const infoBox = document.getElementById('info-box');
+
+    function showDefaultMessage() {
+      infoBox.innerHTML = '<p>Click on a point to explore further.</p>';
+      infoBox.style.border = "";
+    }
+
+    function showFeatureInfo(space, memory, time, association, color, quirk) {
+      infoBox.innerHTML = 
+        `<h3>${space}</h3>`;
+      if (quirk != "") {
+        infoBox.append(addQuirk(quirk));
+        quirkCredit(quirk);
+      }
+      infoBox.innerHTML += `
+        <p><strong>Academic Year:</strong> ${time}</p>
+        <p><strong>Associations:</strong> ${association}</p>
+        <p>${memory}</p>
+      `;
+      infoBox.style.border = "5px solid " + color;
+    }
+
+    // Keep track of the currently selected marker
+    let selectedLayer = null;
+
+    // Reset highlight & sidebar
+    function resetSelection() {
+      if (selectedLayer) {
+        const defaultStyle = {
+          radius: 8,
+          color: selectedLayer.feature.properties.color,
+          fillOpacity: 0.8,
+        };
+        selectedLayer.setStyle(defaultStyle);
+        selectedLayer = null;
+      }
+      showDefaultMessage();
+    }
+
+    // Handle clicking on the map background
+    map.on('click', resetSelection);
+
+    // Add a creative figure to the info box
+    function addQuirk(quirk) {
+      // const quirk = allData.properties.quirk;
+      const image = new Image();
+      image.style.width = "100%";
+      image.style.height = "auto";
+      if (quirk === "Mellow Path") {
+        image.src = "img/mellowpath.jpg";
+        //return "🐿️"
+        return image
+      } else if (quirk === "Shared Office") {
+        image.src = "img/mydesk.jpg";
+        return image
+      } else if (quirk === "Tea") {
+        image.src = "img/tea.jpg";
+        return image
+      }
+    }
+
+    // Add a credit for the creative figure added to the info box
+    function quirkCredit(quirk) {
+      if (quirk === "Mellow Path") {
+        infoBox.innerHTML += `<p><i>Photograph of Denny Yard, taken myself on 7/2/25.</i></p>`;
+      } else if (quirk === "Shared Office") {
+        infoBox.innerHTML += `<p><i>Photograph of my assigned desk, taken myself on 7/2/25.</i></p>`;
+      } else if (quirk === "Tea") {
+        infoBox.innerHTML += `<p><i>Photograph of a gongfu tea infusion, taken myself on 10/22/22.</i></p>`;
+      }
+    }
+
+  </script>
+</body>
+</html>

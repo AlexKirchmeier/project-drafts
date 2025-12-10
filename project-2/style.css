@@ -1,0 +1,87 @@
+#title {
+    position: absolute;
+    top: 10px;
+    left: 55px;
+    /* transform: translateX(-50%); */
+    max-width: 30%;
+    z-index: 1000;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    /* font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold; */
+}
+#title h1 {
+    text-wrap: balance;
+}
+#title p {
+    text-wrap: pretty;
+}
+/* #description {
+
+} */
+#controls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+#controls h4 { margin: 0 0 5px; }
+
+#controls label { margin-right: 10px; }
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.leaflet-tile-pane {
+    -webkit-filter: grayscale(100%);
+    filter: grayscale(100%);
+}
+
+/* .leaflet-control-container {
+    position: absolute;
+    z-index: 1000;
+    top: 0px;
+    right: 0px;
+} */
+
+#info-box {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 25%;
+    height: flex;
+    max-height: 70%;
+    z-index: 1000;
+    float: right;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    overflow-y: auto;
+    /* box-sizing: border-box;
+    padding: 1rem;
+    border-left: 1px solid #ccc;
+    font-family: sans-serif;
+    background: #fafafa; */
+}
+
+/* optional: style headings inside info box */
+#info-box h2 {
+    margin-top: 0;
+}

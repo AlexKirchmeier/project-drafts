@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Project 3: Considering Coinhabitants</title>
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <!-- Load plotly.js into the DOM -->
+	<script src='https://cdn.plot.ly/plotly-3.1.0.min.js'></script>
+	<script src='https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js'></script>
+
+  <style>
+  </style>
+</head>
+<body>
+  <!-- Access the GeoJSON data -->
+  <script src = "data/presences.geojson"></script>
+  <div class="page">
+    <div class="top-row">
+      <div class="panel left-panel" id="contextPanel">
+        <h3>About this Space</h3>
+        <div id="locationTitle" class="meta">No feature selected</div>
+        <div id="locationDetails" style="margin-top:12px;">
+          <div class="context-item">Click on a space to explore observed coinhabitants.</div>
+        </div>
+
+        <!-- <h3 style="margin-top:12px;">Sunburst Data (placeholder)</h3>
+        <div id="sunburstPlaceholder" class="context-item">
+          <div class="meta">CSV tied to selected location:</div>
+          <div id="selectedCsv" style="font-weight:600; margin-top:8px">None</div>
+          <div style="margin-top:10px; color:#666; font-size:0.9rem;">
+            When you are ready, use the variable <code>selectedCsvFile</code> to load CSV data and construct a Plotly sunburst chart.
+          </div>
+        </div> -->
+
+        <h3 style="margin-top:12px;">Quick Actions</h3>
+        <div style="display:flex; gap:8px;">
+          <button id="resetSelectionBtn">Reset Selection</button>
+          <button id="zoomToSelectionBtn" disabled>Zoom to Selection</button>
+        </div>
+      </div>
+
+      <div class="panel right-panel">
+        <h3>Prominent Spaces Throughout My Experiences at the University of Washington (Seattle)</h3>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <div class="panel bottom-panel" id="bottomPanel">
+      <h3>Honoring Coinhabitants in Places on Campus</h3>
+      <div style="display:flex; gap:14px;">
+        <div style="flex:1;">
+          <div class="context-item">
+            <strong>About this Project</strong>
+            <p class="meta" style="margin-top:8px;">
+              When we explore <i>place</i>, we might also consider our fellow inhabitants of the space in question.
+              Our relations to space do not exist independent of our relations to one another, after all!
+              Here, I have taken time to ponder and observe the past, present, and unnoticed coinhabitants (of any and all forms) that I have come across throughout my experiences in the seven spaces included here.
+              These observations took place on August 27th, 2025, when I had visited each space and took note of coinhabitants (and thus constructed the "data" explored in this dashboard).
+              An interesting date, considering the (presumed) inactivity of the campus during the late summer!
+              <br>
+              </br>
+              The seven spaces included here are represented as polygons.
+              If you hover over these polygons, you will find that they offer to you a bit of context, as well as a name that encapsulates how <i>I</i> perceive them as <i>places</i>.
+              If you click upon one of these polygons, the above panel will provide some additional context for the corresponding space, through a playful combination of the written word and a sunburst diagram.
+              The (interactive!) sunburst diagram explores the observed/pondered coinhabitants within each space.
+              You might also notice that an additional feature is added to the map panel once a space is selected.
+              This custom icon is positioned at the point at which I was stationed as I collected my observations/ponderings for that space.
+              (Perhaps one might observe some limitations here?)
+              <br>
+              </br>
+              Happy exploring, and I encourage you to ponder the more-than-human coinhabitants in your life (and in your GIS) as well!
+            </p>
+          </div>
+        </div>
+
+        <div style="flex:1;">
+          <div class="context-item">
+            <strong>Acknowledgements</strong>
+            <p class="meta" style="margin-top:8px;">
+              <!-- I acknowledge that the land this project references is the traditional and unceded territory of the people of the Duwamish and other Indigenous nations.
+              This acknowledgement is a placeholder and will be refined later. -->
+              I would like to acknowledge that the coinhabitants of these spaces (myself very much included) are situated on the traditional land of the first people of Seattle, the Duwamish People past and present.
+              I honor, with gratitude, the land itself and the Duwamish Tribe.
+              <br>
+              </br>
+              While I strive to honor relationality amongst all things, this project is deeply situated within my own limited perspective.
+              I take full responsibilty for the absences that are present here, and I recognize the rhetorical harms of such absences.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ---------------------------
+    // Configuration and placeholders
+    // ---------------------------
+
+    // Map of 'location' values to local CSV filenames (adjust filenames as you store them)
+    const locationToCsv = {
+      "Mellow Path": "data/mellowpath.csv",
+      "Savery 117": "data/savery117.csv",
+      "Shared Office": "data/sharedoffice.csv",
+      "Smith 409": "data/smith409.csv",
+      "Geog 315": "data/geog315.csv",
+      "Tea Club (Early Years)": "data/teaclubearly.csv",
+      "Tea Club (Contemporary)": "data/teaclubcontemporary.csv"
+      // add more mappings for your dataset
+    };
+
+    // Variable to store currently selected CSV path (for sunburst creation)
+    let selectedCsvFile = null;
+
+    // Marker management
+    let activeMarker = null;
+    const customIcon = L.icon({
+      iconUrl: 'img/Figure.png', // replace with local custom icon path (ensure file exists)
+      iconSize: [20],
+      iconAnchor: [10, 44]
+    });
+
+    // Keep reference to the last clicked polygon layer for styling
+    let lastClickedLayer = null;
+    let lastHoveredLayer = null;
+
+    // ---------------------------
+    // Initialize map
+    // ---------------------------
+    var map = L.map('map').setView([47.657053, -122.306904], 17);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+	    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+	    subdomains: 'abcd',
+      minZoom: 14,
+      maxZoom: 21,
+      tileSize: 512,
+      zoomOffset: -1
+    }).addTo(map);
+
+    // Style functions
+    function defaultStyle(feature) {
+      return {
+        // color: '#2b7a78',
+        color: '#3780C8',
+        weight: 2,
+        opacity: 0.7,
+        // fillColor: '#66c2bd',
+        fillColor: '#A7C7E7',
+        fillOpacity: 0.3
+      };
+    }
+
+    function highlightStyle(feature) {
+      return {
+        // color: '#ff5a5f',
+        color: '#FFF200',
+        weight: 3,
+        opacity: 1,
+        // fillColor: '#ffcbc9',
+        fillColor: '#FFFAA0',
+        fillOpacity: 0.45
+      };
+    }
+
+    // ---------------------------
+    // Interaction handlers
+    // ---------------------------
+
+    function onEachFeature(feature, layer) {
+      // Bind popup content to 'context' but we will only open on hover
+      const nm = feature.properties && feature.properties.location ? feature.properties.location : '';
+      const ctx = feature.properties && feature.properties.context ? feature.properties.context : '';
+      layer.bindPopup('<strong>' + String(nm)+ '</strong><br>' + String(ctx), { offset: L.point(0, -10) });
+
+      layer.on({
+        mouseover: function (e) {
+          if (lastHoveredLayer && lastHoveredLayer !== lastClickedLayer) {
+            lastHoveredLayer.setStyle(defaultStyle(lastHoveredLayer.feature));
+          }
+          e.target.setStyle(highlightStyle(e.target.feature));
+          lastHoveredLayer = e.target;
+          // show popup on hover
+          e.target.openPopup();
+        },
+        mouseout: function (e) {
+          // close popup and reset style unless it's the clicked one
+          e.target.closePopup();
+          if (e.target !== lastClickedLayer) {
+            e.target.setStyle(defaultStyle(e.target.feature));
+          }
+          lastHoveredLayer = null;
+        },
+        click: function (e) {
+          // Reset previously clicked polygon style
+          if (lastClickedLayer && lastClickedLayer !== e.target) {
+            lastClickedLayer.setStyle(defaultStyle(lastClickedLayer.feature));
+          }
+
+          // Set clicked polygon style
+          e.target.setStyle(highlightStyle(e.target.feature));
+          lastClickedLayer = e.target;
+
+          // Close its popup (we will optionally open with context panel)
+          e.target.closePopup();
+
+          // Place a custom icon at positionality coords (if present)
+          const pos = feature.properties && feature.properties.positionality;
+          if (Array.isArray(pos) && pos.length >= 2) {
+            // positionality assumed to be [lng, lat]
+            const [lng, lat] = pos;
+            if (activeMarker) {
+              map.removeLayer(activeMarker);
+              activeMarker = null;
+            }
+            activeMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+          }
+
+          // Update left context panel based on 'location' property
+          const loc = feature.properties && feature.properties.location ? feature.properties.location : null;
+
+          // Set CSV path variable depending on 'location'
+          if (loc && locationToCsv.hasOwnProperty(loc)) {
+            selectedCsvFile = locationToCsv[loc];
+          } else {
+            selectedCsvFile = null;
+          }
+
+          updateContextPanel(loc, feature.properties);
+
+          // document.getElementById('selectedCsv').textContent = selectedCsvFile || 'None';
+
+          // Enable zoom-to-selection button
+          document.getElementById('zoomToSelectionBtn').disabled = false;
+        }
+      });
+    }
+
+    // ---------------------------
+    // GeoJSON layer
+    // ---------------------------
+    const geojsonLayer = L.geoJSON(data, {
+      style: defaultStyle,
+      onEachFeature: onEachFeature
+    }).addTo(map);
+
+    // Fit map to features'
+    try {
+      map.fitBounds(geojsonLayer.getBounds(), { padding: [30, 30] });
+    } catch (e) {
+      // ignore if no bounds
+    }
+
+    // ---------------------------
+    // Context panel logic
+    // ---------------------------
+
+    const contextPanelTitle = document.getElementById('locationTitle');
+    const contextDetails = document.getElementById('locationDetails');
+
+    // Predefined contextual info for known locations (adjust/polish as needed)
+    const contextualText = {
+      "Mellow Path": {
+        title: "Mellow Path",
+        description: "[Placeholder for Mellow Path, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Savery 117": {
+        title: "Savery 117",
+        description: "[Placeholder for Savery 117, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Shared Office": {
+        title: "Shared Office",
+        description: "[Placeholder for Shared Office, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Smith 409": {
+        title: "Smith 409",
+        description: "[Placeholder for Smith 409, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Geog 315": {
+        title: "Geog 315",
+        description: "[Placeholder for Geog 315, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Tea Club (Early Years)": {
+        title: "Tea Club (Early Years)",
+        description: "[Placeholder for early Tea Club, should I decide to put this element to use when presenting my work to a broader audience.]"
+      },
+      "Tea Club (Contemporary)": {
+        title: "Tea Club (Contemporary)",
+        description: "[Placeholder for contemporary Tea Club, should I decide to put this element to use when presenting my work to a broader audience.]"
+      }
+      // add more location -> content mappings here
+    };
+
+    function updateContextPanel(locationKey, properties) {
+      if (!locationKey) {
+        contextPanelTitle.textContent = "No feature selected";
+        contextDetails.innerHTML = '<div class="context-item">Click on a space to explore observed coinhabitants.</div>';
+        return;
+      }
+
+      const ctxObj = contextualText[locationKey];
+      contextPanelTitle.textContent = ctxObj ? ctxObj.title : ("Location: " + locationKey);
+
+      // Build content: existing context property, plus predefined description if present
+      const detailBlocks = [];
+      // if (properties && properties.context) {
+      //   detailBlocks.push(`<div class="context-item"><strong>Context</strong><p class="meta" style="margin-top:8px;">${escapeHtml(properties.context)}</p></div>`);
+      // }
+
+      detailBlocks.push(`<div class="context-item"><div id="sunburstChart" style="height:280px;"></div></div>`);
+
+      if (ctxObj && ctxObj.description) {
+        detailBlocks.push(`<div class="context-item"><strong>Context</strong><p class="meta" style="margin-top:8px;">${escapeHtml(ctxObj.description)}</p></div>`);
+      }
+
+      contextDetails.innerHTML = detailBlocks.join('');
+      // When you implement the sunburst, call createSunburst(selectedCsvFile) here
+      createSunburst(selectedCsvFile)
+    }
+
+    // Escape helper to avoid HTML injection from properties
+    function escapeHtml(string) {
+      if (!string) return '';
+      return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+          '/': '&#x2F;',
+          '`': '&#x60;',
+          '=': '&#x3D;'
+        }[s];
+      });
+    }
+
+    // ---------------------------
+    // Buttons and controls
+    // ---------------------------
+    document.getElementById('resetSelectionBtn').addEventListener('click', function () {
+      // Remove active marker
+      if (activeMarker) {
+        map.removeLayer(activeMarker);
+        activeMarker = null;
+      }
+      // Reset polygon styles
+      geojsonLayer.eachLayer(function (lyr) {
+        lyr.setStyle(defaultStyle(lyr.feature));
+      });
+      lastClickedLayer = null;
+      lastHoveredLayer = null;
+      // Reset context panel and CSV var
+      selectedCsvFile = null;
+      // document.getElementById('selectedCsv').textContent = 'None';
+      updateContextPanel(null, null);
+      document.getElementById('zoomToSelectionBtn').disabled = true;
+    });
+
+    document.getElementById('zoomToSelectionBtn').addEventListener('click', function () {
+      if (lastClickedLayer) {
+        try {
+          map.fitBounds(lastClickedLayer.getBounds(), { padding: [30, 30] });
+        } catch (e) {
+          // ignore if no bounds available
+        }
+      }
+    });
+
+    // ---------------------------
+    // Sunburst creation
+    // ---------------------------
+    function createSunburst(csvPath) {
+      // if (!csvPath) {
+      //   console.warn('createSunburst called with empty csvPath');
+      //   return;
+      // }
+
+      d3.csv(csvPath, function(err, rows){
+        function unpack(rows, key) {
+        return rows.map(function(row) {return row[key]})
+      }
+
+        var plotdata = [{
+              type: "sunburst",
+              maxdepth: 2,
+              //ids: unpack(rows, 'detail'),
+              labels: unpack(rows, 'labels'),
+              parents: unpack(rows, 'parents'),
+              textposition: 'inside',
+              insidetextorientation: 'radial',
+              marker: {
+                colors: ["white", "#A7C7E7", "#FFFAA0", "#C3B1E1"]
+              }
+              // Center: white
+              // Past: blue (powder blue)
+              // Present: yellow (pastel yellow)
+              // Unnoticed: purple (pastel purple)
+        }]
+
+        var layout = {margin: {l: 0, r: 0, b: 0, t:0}}
+
+        Plotly.newPlot('sunburstChart', plotdata, layout)
+      })
+
+
+      // For now, we'll place a placeholder message in the sunburst container
+      // const sb = document.getElementById('sunburstChart');
+      // if (sb) {
+      //   sb.innerHTML = '<div style="padding:16px;color:#444;">Sunburst would be built from: <code>' + escapeHtml(csvPath) + '</code></div>';
+      // }
+    }
+
+    // Optional: Automatically update sunburst placeholder if selectedCsvFile changes
+    // const observerInterval = setInterval(function () {
+    //   const displayed = document.getElementById('selectedCsv').textContent;
+    //   if (selectedCsvFile && displayed === (selectedCsvFile)) {
+    //     // attempt to render placeholder sunburst view
+    //     createSunburst(selectedCsvFile);
+    //     clearInterval(observerInterval);
+    //   }
+    // }, 800);
+
+    // ---------------------------
+    // Initial UI state
+    // ---------------------------
+    updateContextPanel(null, null);
+
+    // ---------------------------
+    // Notes for developers
+    // ---------------------------
+    // console.log('Dashboard scaffold loaded. selectedCsvFile will contain the local CSV filename associated with a clicked polygon (if mapped).');
+    // console.log('Map center:', mapCenter, 'initialZoom:', initialZoom);
+  </script>
+</body>
+</html>
