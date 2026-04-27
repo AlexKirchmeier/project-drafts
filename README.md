@@ -22,11 +22,11 @@ Project 3: [Considering Coinhabitants](https://alexkirchmeier.github.io/project-
 
 Here, I have prepared three narratives that describe, in detail, the process of constructing these creative, place-based GIS project drafts. Despite their length, these narratives serve as mere summaries of my field notes and thus oversimplify the processes of these projects. Notable absences include possibilities that did not actively shape the development of each project, but were nevertheless on the table at various points in the project processes.
 
-Project 1: [Developing the Self-dialogue](https://alexkirchmeier.github.io/project-drafts/firstprojectnarrative.md)
+Project 1: [Developing the Self-dialogue](https://github.com/AlexKirchmeier/project-drafts/blob/main/firstprojectnarrative.md)
 
-Project 2: [Developing Memories in Place and Time](https://alexkirchmeier.github.io/project-drafts/secondprojectnarrative.md)
+Project 2: [Developing Memories in Place and Time](https://github.com/AlexKirchmeier/project-drafts/blob/main/secondprojectnarrative.md)
 
-Project 3: [Developing Considering Coinhabitants](https://alexkirchmeier.github.io/project-drafts/thirdprojectnarrative.md)
+Project 3: [Developing Considering Coinhabitants](https://github.com/AlexKirchmeier/project-drafts/blob/main/thirdprojectnarrative.md)
 
 ### Recollection Repository Links
 
